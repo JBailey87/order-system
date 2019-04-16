@@ -7,7 +7,30 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
     <spring:beans>
         <spring:import resource="classpath:order-system.xml"/>
     </spring:beans>
-    <munit:test name="order-system-test-suite-processOrdersTest" description="Test">
+    <munit:before-test name="processOrders_beforeTests" description="Before tests actions">
+        <munit:set payload="#[[{'orderID':444, 'location':'international','price':14.01}, {'orderID':444, 'location':'international','price':14.01}, {'orderID':555, 'location':'domestic','price':14.01}]]" doc:name="Set Message"/>
+    </munit:before-test>
+    <sub-flow name="processOrders_hasPayload">
+        <munit:assert-true message="Payload is empty" condition="#[payload.'international'.size() &gt; 0]" doc:name="Assert True"/>
+    </sub-flow>
+    <munit:test name="processOrders_returns2ElementMap" description="Test if output is a map with 2 elements">
         <flow-ref name="processOrders" doc:name="Flow-ref to processOrders"/>
+        <munit:assert-true message="Payload is not a Map!" condition="#[payload is java.util.Map]" doc:name="Assert True"/>
+        <munit:assert-on-equals message="Payload is too big" expectedValue="#[2]" actualValue="#[payload.size()]" doc:name="Assert Equals"/>
+    </munit:test>
+    
+    <munit:test name="processOrders_internationalKeyReturnsInternationalOrders" description="Test if international Key contains only internaltion Orders">
+        <flow-ref name="processOrders" doc:name="Flow-ref to processOrders"/>
+        <flow-ref name="processOrders_hasPayload" doc:name="hasPayload Flow Reference"/>
+        <foreach collection="#[payload.'international']" doc:name="For Each">
+            <munit:assert-on-equals expectedValue="#['international']" actualValue="#[payload.'location']" doc:name="Assert Equals" message="International Key contains not only international orders"/>
+        </foreach>
+    </munit:test>
+    <munit:test name="processOrders_domesticKeyReturnsDomesticOrders" description="Test if international Key contains only internaltion Orders">
+        <flow-ref name="processOrders" doc:name="Flow-ref to processOrders"/>
+        <munit:assert-true message="Payload is empty" condition="#[payload.'domestic'.size() &gt; 0]" doc:name="Assert True"/>
+        <foreach collection="#[payload.'domestic']" doc:name="For Each">
+            <munit:assert-on-equals expectedValue="#['domestic']" actualValue="#[payload.'location']" doc:name="Assert Equals" message="Domestic Key contains international orders"/>
+        </foreach>
     </munit:test>
 </mule>
